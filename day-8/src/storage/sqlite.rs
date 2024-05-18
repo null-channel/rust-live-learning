@@ -29,6 +29,20 @@ ORDER BY id
     Ok(todos)
 }
 
+pub async fn delete_todo(
+    id: i64,
+    mut sql_con: PoolConnection<Sqlite>,
+) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
+    sqlx::query!(
+        r#"
+DELETE FROM todos WHERE id=?
+    "#,
+        id,
+    )
+    .execute(&mut *sql_con)
+    .await
+}
+
 pub async fn new_todo(
     todo: Todo,
     mut sql_con: PoolConnection<Sqlite>,

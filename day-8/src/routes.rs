@@ -13,6 +13,17 @@ pub async fn get_todos(State(state): TodoState) -> (StatusCode, Json<Option<Vec<
     }
 }
 
+pub async fn delete_todo(State(state): TodoState, Json(payload): Json<i64>) -> StatusCode {
+    println!("deleting {}", payload);
+    let conn = state.acquire().await.unwrap();
+    let result = crate::storage::sqlite::delete_todo(payload, conn).await;
+    match result {
+        Ok(query) => println!("{:?}", query),
+        Err(e) => println!("{}", e),
+    }
+    StatusCode::OK
+}
+
 pub async fn post_todo(
     State(state): TodoState,
     Json(payload): Json<Todo>,
