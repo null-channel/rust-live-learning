@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: ulttodo
+  name: ulttodo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ulttodo
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: ulttodo
+    spec:
+      containers:
+      - image: nullchannel/learn-kubernetes-rust:latest
+        command: ["./target/release/ulttodo"]
+        args: ["--port", "8080"]
+        name: learn-kubernetes-rust
+        resources: {}
+status: {}
