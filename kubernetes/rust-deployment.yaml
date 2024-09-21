@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: todo
+  name: todo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: todo
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: todo
+    spec:
+      containers:
+      - image: nullchannel/learn-kubernetes-rust:latest
+        command: ["./target/release/todo"]
+        args: ["--port", "8080"]
+        name: learn-kubernetes-rust
+        resources: {}
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: database
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: port
+status: {}

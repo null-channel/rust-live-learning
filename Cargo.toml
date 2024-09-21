@@ -1,0 +1,12 @@
+[workspace]
+
+members = [ "proto",
+    "todo",
+    "weather",
+    "proto",
+]
+
+
+[workspace.dependencies]
+tokio-tungstenite = { version = "0.21.0", features = [] }
+
