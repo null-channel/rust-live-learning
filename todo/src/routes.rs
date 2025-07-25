@@ -8,13 +8,13 @@ pub async fn get_todos(State(state): TodoState) -> (StatusCode, Json<Option<Vec<
     let conn = state.acquire().await.unwrap();
     let todos_result = get_all_todos(conn).await;
     match todos_result {
-        Ok(todos) => return (StatusCode::OK, Json(Some(todos))),
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(None)),
+        Ok(todos) => (StatusCode::OK, Json(Some(todos))),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(None)),
     }
 }
 
 pub async fn delete_todo(State(state): TodoState, Json(payload): Json<i64>) -> StatusCode {
-    println!("deleting {}", payload);
+    println!("deleting {payload}");
     let conn = state.acquire().await.unwrap();
     let result = crate::storage::sqlite::delete_todo(payload, conn).await;
     match result {
@@ -31,6 +31,7 @@ pub async fn post_todo(
     let conn = state.acquire().await.unwrap();
     let saved = match payload.id {
         Some(_id) => {
+            //TODO: Check query result to see if the update was successful.
             let _ = update_todo(payload.clone(), conn).await;
             Some(payload)
         }
@@ -38,7 +39,8 @@ pub async fn post_todo(
             let todo = Todo {
                 id: None,
                 title: payload.title,
-                completed: payload.completed,
+                due_date: payload.due_date,
+                completion_date: None,
             };
             let _ = new_todo(todo.clone(), conn).await;
             Some(todo)

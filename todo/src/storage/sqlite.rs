@@ -1,4 +1,5 @@
 use axum::extract::State;
+use chrono::{DateTime, NaiveDateTime, TimeZone};
 use sqlx::{pool::PoolConnection, Sqlite};
 
 use crate::types::Todo;
@@ -8,7 +9,7 @@ pub type TodoState = State<sqlx::SqlitePool>;
 pub async fn get_all_todos(mut sql_con: PoolConnection<Sqlite>) -> Result<Vec<Todo>, sqlx::Error> {
     let req = sqlx::query!(
         r#"
-SELECT id, title, completed
+SELECT id, title, due_date, completion_date
 FROM todos
 ORDER BY id
     "#
@@ -21,7 +22,8 @@ ORDER BY id
         let new_todo = Todo {
             id: Some(result.id),
             title: result.title,
-            completed: result.completed,
+            due_date: result.due_date,
+            completion_date: result.completion_date,
         };
 
         todos.push(new_todo);
@@ -49,11 +51,12 @@ pub async fn new_todo(
 ) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     sqlx::query!(
         r#"
-INSERT INTO todos (title, completed)
-VALUES ( ?, ? )
+INSERT INTO todos (title, completion_date, due_date)
+VALUES ( ?, ?, ? )
     "#,
         todo.title,
-        todo.completed
+        "",
+        todo.due_date,
     )
     .execute(&mut *sql_con)
     .await
@@ -66,11 +69,12 @@ pub async fn update_todo(
     sqlx::query!(
         r#"
 UPDATE todos
-SET title = ?, completed = ?
+SET title = ?, due_date = ?, completion_date = ?
 WHERE id = ?
     "#,
         todo.title,
-        todo.completed,
+        todo.due_date,
+        todo.completion_date,
         todo.id
     )
     .execute(&mut *sql_con)
