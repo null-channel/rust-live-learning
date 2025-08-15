@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package weather;
+
+service Weather {
+  rpc getWeather(getWeatherRequest) returns (getWeatherResponse);
+}
+
+message getWeatherRequest {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message getWeatherResponse {
+  float temperature = 1;
+  float humidity = 4;
+  float pressure = 5;
+  float windSpeed = 6;
+  int32 windDirection = 7;
+  int32 cloudCover = 8;
+}
