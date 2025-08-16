@@ -10,3 +10,7 @@ members = [ "proto",
 [workspace.dependencies]
 tokio-tungstenite = { version = "0.21.0", features = [] }
 
+# gRPC
+tonic = { version = "0.14" }
+prost = { version = "0.14"}
+tonic-prost = { version = "0.14" }

@@ -7,4 +7,5 @@ pub struct Todo {
     pub title: String,
     pub due_date: Option<NaiveDateTime>,
     pub completion_date: Option<NaiveDateTime>,
+    pub weather_at_completion: Option<String>,
 }

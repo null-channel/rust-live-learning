@@ -1,5 +1,5 @@
 use crate::{
-    storage::sqlite::{get_all_todos, new_todo, update_todo, TodoState},
+    storage::sqlite::{get_all_todos, get_todo, new_todo, update_todo, TodoState},
     types::Todo,
 };
 use axum::{extract::State, http::StatusCode, Json};
@@ -24,15 +24,44 @@ pub async fn delete_todo(State(state): TodoState, Json(payload): Json<i64>) -> S
     StatusCode::OK
 }
 
+type WeatherClientState =
+    State<crate::weather::weather_client::WeatherClient<tonic::transport::Channel>>;
+
 pub async fn post_todo(
-    State(state): TodoState,
+    State(todo_db): TodoState,
+    State(weather_client): WeatherClientState,
     Json(payload): Json<Todo>,
 ) -> (StatusCode, Json<Option<Todo>>) {
-    let conn = state.acquire().await.unwrap();
+    let conn = todo_db.acquire().await.unwrap();
     let saved = match payload.id {
         Some(_id) => {
             //TODO: Check query result to see if the update was successful.
-            let _ = update_todo(payload.clone(), conn).await;
+
+            let old_todo = get_todo(payload.id.unwrap(), conn).await;
+            match old_todo {
+                Ok(old) => {
+                    if old.due_date == None && payload.due_date.is_some() {
+                        let request = crate::weather::GetWeatherRequest {
+                            longitude: 39.983334,
+                            latitude: -82.983330,
+                        };
+                        let response = weather_client.clone().get_weather(request).await;
+                        match response {
+                            Ok(res) => {
+                                // Update the payload with the weather at completion
+                            }
+                            Err(e) => {
+                                println!("Error fetching weather: {}", e);
+                                return (StatusCode::INTERNAL_SERVER_ERROR, Json(None));
+                            }
+                        }
+                    }
+                }
+                // TODO: return error (todo not found)
+                Err(e) => return (StatusCode::BAD_REQUEST, Json(None)),
+            }
+
+            let _ = update_todo(&payload, conn).await;
             Some(payload)
         }
         None => {
@@ -41,6 +70,7 @@ pub async fn post_todo(
                 title: payload.title,
                 due_date: payload.due_date,
                 completion_date: None,
+                weather_at_completion: None,
             };
             let _ = new_todo(todo.clone(), conn).await;
             Some(todo)

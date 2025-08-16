@@ -9,7 +9,7 @@ pub type TodoState = State<sqlx::SqlitePool>;
 pub async fn get_all_todos(mut sql_con: PoolConnection<Sqlite>) -> Result<Vec<Todo>, sqlx::Error> {
     let req = sqlx::query!(
         r#"
-SELECT id, title, due_date, completion_date
+SELECT id, title, due_date, completion_date, weather_at_completion
 FROM todos
 ORDER BY id
     "#
@@ -24,11 +24,34 @@ ORDER BY id
             title: result.title,
             due_date: result.due_date,
             completion_date: result.completion_date,
+            weather_at_completion: result.weather_at_completion,
         };
 
         todos.push(new_todo);
     }
     Ok(todos)
+}
+
+pub async fn get_todo(id: i64, mut sql_con: PoolConnection<Sqlite>) -> Result<Todo, sqlx::Error> {
+    let req = sqlx::query!(
+        r#"
+SELECT id, title, due_date, completion_date, weather_at_completion
+FROM todos
+WHERE id = ?
+    "#,
+        id,
+    )
+    .fetch_one(&mut *sql_con)
+    .await?;
+
+    let todo = Todo {
+        id: Some(req.id),
+        title: req.title,
+        due_date: req.due_date,
+        completion_date: req.completion_date,
+        weather_at_completion: req.weather_at_completion,
+    };
+    Ok(todo)
 }
 
 pub async fn delete_todo(
@@ -63,7 +86,7 @@ VALUES ( ?, ?, ? )
 }
 
 pub async fn update_todo(
-    todo: Todo,
+    todo: &Todo,
     mut sql_con: PoolConnection<Sqlite>,
 ) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     sqlx::query!(

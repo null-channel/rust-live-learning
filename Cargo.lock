@@ -2167,10 +2167,14 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
+ "prost",
  "serde",
  "serde_json",
  "sqlx",
  "tokio",
+ "tonic",
+ "tonic-prost",
+ "tonic-prost-build",
 ]
 
 [[package]]
