@@ -1,4 +1,5 @@
 use axum::{
+    extract::FromRef,
     routing::{delete, get, post},
     Router,
 };
@@ -29,6 +30,24 @@ struct CliArgs {
     weather_service_url: String,
 }
 
+#[derive(Clone)]
+pub struct AppData {
+    todo_db: SqlitePool,
+    weather_client: WeatherClient<tonic::transport::Channel>,
+}
+
+impl FromRef<AppData> for SqlitePool {
+    fn from_ref(state: &AppData) -> Self {
+        state.todo_db.clone()
+    }
+}
+
+impl FromRef<AppData> for WeatherClient<tonic::transport::Channel> {
+    fn from_ref(state: &AppData) -> Self {
+        state.weather_client.clone()
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CliArgs::parse();
@@ -39,15 +58,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         panic!("could not connect to the database");
     };
     let weather_service_url = format!("{}:{}", args.weather_service_url, args.weather_service_port);
-    let mut client = WeatherClient::connect(weather_service_url).await?;
+    let client = WeatherClient::connect(weather_service_url).await?;
 
+    let app_state = AppData {
+        todo_db: pool.clone(),
+        weather_client: client.clone(),
+    };
     let app = Router::new()
         .route("/", get(root))
         .route("/todos", get(get_todos))
         .route("/todos", post(post_todo))
         .route("/todos", delete(delete_todo))
-        .with_state(pool)
-        .with_state(client);
+        .with_state(app_state);
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.port))

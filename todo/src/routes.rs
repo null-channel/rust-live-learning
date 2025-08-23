@@ -1,11 +1,11 @@
 use crate::{
-    storage::sqlite::{get_all_todos, get_todo, new_todo, update_todo, TodoState},
+    storage::sqlite::{get_all_todos, get_todo, new_todo, update_todo, AppState},
     types::Todo,
 };
 use axum::{extract::State, http::StatusCode, Json};
 
-pub async fn get_todos(State(state): TodoState) -> (StatusCode, Json<Option<Vec<Todo>>>) {
-    let conn = state.acquire().await.unwrap();
+pub async fn get_todos(State(state): AppState) -> (StatusCode, Json<Option<Vec<Todo>>>) {
+    let conn = state.todo_db.acquire().await.unwrap();
     let todos_result = get_all_todos(conn).await;
     match todos_result {
         Ok(todos) => (StatusCode::OK, Json(Some(todos))),
@@ -13,10 +13,9 @@ pub async fn get_todos(State(state): TodoState) -> (StatusCode, Json<Option<Vec<
     }
 }
 
-pub async fn delete_todo(State(state): TodoState, Json(payload): Json<i64>) -> StatusCode {
+pub async fn delete_todo(State(state): AppState, Json(payload): Json<i64>) -> StatusCode {
     println!("deleting {payload}");
-    let conn = state.acquire().await.unwrap();
-    let result = crate::storage::sqlite::delete_todo(payload, conn).await;
+    let result = crate::storage::sqlite::delete_todo(payload, &state.todo_db).await;
     match result {
         Ok(query) => println!("{:?}", query),
         Err(e) => println!("{}", e),
@@ -28,16 +27,13 @@ type WeatherClientState =
     State<crate::weather::weather_client::WeatherClient<tonic::transport::Channel>>;
 
 pub async fn post_todo(
-    State(todo_db): TodoState,
-    State(weather_client): WeatherClientState,
+    State(app_state): AppState,
     Json(payload): Json<Todo>,
 ) -> (StatusCode, Json<Option<Todo>>) {
-    let conn = todo_db.acquire().await.unwrap();
     let saved = match payload.id {
         Some(_id) => {
             //TODO: Check query result to see if the update was successful.
-
-            let old_todo = get_todo(payload.id.unwrap(), conn).await;
+            let old_todo = get_todo(payload.id.unwrap(), &app_state.todo_db).await;
             match old_todo {
                 Ok(old) => {
                     if old.due_date == None && payload.due_date.is_some() {
@@ -45,7 +41,7 @@ pub async fn post_todo(
                             longitude: 39.983334,
                             latitude: -82.983330,
                         };
-                        let response = weather_client.clone().get_weather(request).await;
+                        let response = app_state.weather_client.clone().get_weather(request).await;
                         match response {
                             Ok(res) => {
                                 // Update the payload with the weather at completion
@@ -61,7 +57,7 @@ pub async fn post_todo(
                 Err(e) => return (StatusCode::BAD_REQUEST, Json(None)),
             }
 
-            let _ = update_todo(&payload, conn).await;
+            let _ = update_todo(&payload, &app_state.todo_db).await;
             Some(payload)
         }
         None => {
@@ -72,7 +68,7 @@ pub async fn post_todo(
                 completion_date: None,
                 weather_at_completion: None,
             };
-            let _ = new_todo(todo.clone(), conn).await;
+            let _ = new_todo(todo.clone(), &app_state.todo_db).await;
             Some(todo)
         }
     };

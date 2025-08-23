@@ -1,10 +1,10 @@
 use axum::extract::State;
 use chrono::{DateTime, NaiveDateTime, TimeZone};
-use sqlx::{pool::PoolConnection, Sqlite};
+use sqlx::{pool::PoolConnection, Sqlite, SqlitePool};
 
 use crate::types::Todo;
 
-pub type TodoState = State<sqlx::SqlitePool>;
+pub type AppState = State<crate::AppData>;
 
 pub async fn get_all_todos(mut sql_con: PoolConnection<Sqlite>) -> Result<Vec<Todo>, sqlx::Error> {
     let req = sqlx::query!(
@@ -32,7 +32,8 @@ ORDER BY id
     Ok(todos)
 }
 
-pub async fn get_todo(id: i64, mut sql_con: PoolConnection<Sqlite>) -> Result<Todo, sqlx::Error> {
+pub async fn get_todo(id: i64, sql_pool: &SqlitePool) -> Result<Todo, sqlx::Error> {
+    let mut sql_con = sql_pool.acquire().await?;
     let req = sqlx::query!(
         r#"
 SELECT id, title, due_date, completion_date, weather_at_completion
@@ -56,8 +57,9 @@ WHERE id = ?
 
 pub async fn delete_todo(
     id: i64,
-    mut sql_con: PoolConnection<Sqlite>,
+    sql_pool: &SqlitePool,
 ) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
+    let mut sql_con = sql_pool.acquire().await?;
     sqlx::query!(
         r#"
 DELETE FROM todos WHERE id=?
@@ -70,8 +72,10 @@ DELETE FROM todos WHERE id=?
 
 pub async fn new_todo(
     todo: Todo,
-    mut sql_con: PoolConnection<Sqlite>,
+    sql_pool: &SqlitePool,
 ) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
+    let mut sql_con = sql_pool.acquire().await?;
+
     sqlx::query!(
         r#"
 INSERT INTO todos (title, completion_date, due_date)
@@ -87,8 +91,9 @@ VALUES ( ?, ?, ? )
 
 pub async fn update_todo(
     todo: &Todo,
-    mut sql_con: PoolConnection<Sqlite>,
+    sql_pool: &SqlitePool,
 ) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
+    let mut sql_con = sql_pool.acquire().await?;
     sqlx::query!(
         r#"
 UPDATE todos

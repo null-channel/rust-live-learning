@@ -1,9 +1,8 @@
 [workspace]
 
-members = [ "proto",
+members = [
     "todo",
     "weather",
-    "proto",
 ]
 
 
